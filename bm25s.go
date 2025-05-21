@@ -186,19 +186,33 @@ func (b *BM25S) termWeight(term string) float64 {
 }
 
 // Score calculates the relevance score of a document to the query
+// Automatically adjusts calculation for long documents
 func (b *BM25S) Score(docIndex int, query string) float64 {
 	queryTerms := b.tokenizer(query)
 	docTF := b.docTermFreqs[docIndex]
 	docLength := float64(b.docLengths[docIndex])
 	score := 0.0
 
+	// Determine if this is a long document
+	isLongDoc := docLength > 2*b.avgDocLength
+
 	for _, term := range queryTerms {
 		if tf, ok := docTF[term]; ok && tf > 0 {
 			weight := b.termWeight(term)
 			tf := float64(tf)
+
 			numerator := tf * (b.k1 + 1)
 			denominator := tf + b.k1*(1-b.b+b.b*(docLength/b.avgDocLength))
-			score += weight * numerator / denominator
+
+			// Different calculation for long documents
+			if isLongDoc {
+				// Additional penalty for very long documents
+				lengthPenalty := math.Min(1.0, b.avgDocLength/docLength)
+				score += weight * numerator / denominator * lengthPenalty
+			} else {
+				// Standard BM25S calculation for short/medium documents
+				score += weight * numerator / denominator
+			}
 		}
 	}
 
