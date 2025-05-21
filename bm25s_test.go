@@ -13,10 +13,7 @@ func TestNew(t *testing.T) {
 		"The quick brown fox jumps over the lazy dog",
 		"A fox fled from danger",
 	}
-	bm25En := New(englishDocs, "en")
-	if bm25En.language != "en" {
-		t.Errorf("Expected language 'en', got '%s'", bm25En.language)
-	}
+	bm25En := New(englishDocs)
 	if bm25En.k1 != ShortK1 {
 		t.Errorf("Expected k1 %f, got %f", ShortK1, bm25En.k1)
 	}
@@ -29,10 +26,7 @@ func TestNew(t *testing.T) {
 		"Быстрая лисица перепрыгнула через ленивую собаку",
 		"Лисица убегала от опасности",
 	}
-	bm25Ru := New(russianDocs, "ru", WithK1(1.5), WithB(0.5), WithIWF())
-	if bm25Ru.language != "ru" {
-		t.Errorf("Expected language 'ru', got '%s'", bm25Ru.language)
-	}
+	bm25Ru := New(russianDocs, WithK1(1.5), WithB(0.5), WithIWF())
 	if bm25Ru.k1 != 1.5 {
 		t.Errorf("Expected k1 1.5, got %f", bm25Ru.k1)
 	}
@@ -52,7 +46,7 @@ func TestBuildIndex(t *testing.T) {
 		"The fox fled from danger",
 		"", // Empty document
 	}
-	bm25 := New(englishDocs, "en")
+	bm25 := New(englishDocs)
 
 	// Check document lengths
 	expectedLengths := []int{5, 5, 0}
@@ -76,7 +70,7 @@ func TestBuildIndex(t *testing.T) {
 		"Быстрая лисица перепрыгнула",
 		"Лисица убегала от опасности",
 	}
-	bm25Ru := New(russianDocs, "ru")
+	bm25Ru := New(russianDocs)
 
 	// Check term document frequencies after stemming
 	if df, ok := bm25Ru.termDocFreq["лисиц"]; !ok || df != 2 {
@@ -91,7 +85,7 @@ func TestScore(t *testing.T) {
 		"The quick brown fox jumps over the lazy dog",
 		"A fox fled from danger",
 	}
-	bm25 := New(englishDocs, "en")
+	bm25 := New(englishDocs)
 
 	// Query for "fox"
 	scoreDoc0 := bm25.Score(0, "fox")
@@ -108,7 +102,7 @@ func TestScore(t *testing.T) {
 		"Быстрая лисица перепрыгнула через собаку",
 		"Лисица убегала от опасности",
 	}
-	bm25Ru := New(russianDocs, "ru")
+	bm25Ru := New(russianDocs)
 
 	// Query for "лисица"
 	scoreDoc0Ru := bm25Ru.Score(0, "лисица")
@@ -126,7 +120,7 @@ func TestSearch(t *testing.T) {
 		"A fox fled from danger",
 		"Irrelevant document",
 	}
-	bm25 := New(englishDocs, "en")
+	bm25 := New(englishDocs)
 
 	// Search for "fox" with topN=2
 	results := bm25.Search("fox", 2)
@@ -146,7 +140,7 @@ func TestSearch(t *testing.T) {
 		"Лисица убегала от опасности",
 		"Нерелевантный документ",
 	}
-	bm25Ru := New(russianDocs, "ru", WithIWF())
+	bm25Ru := New(russianDocs, WithIWF())
 
 	// Search for "лисица" with topN=2
 	resultsRu := bm25Ru.Search("лисица", 2)
@@ -167,7 +161,7 @@ func TestSearch(t *testing.T) {
 // TestEdgeCases tests edge cases like empty documents or queries
 func TestEdgeCases(t *testing.T) {
 	// Test case 1: Empty document collection
-	bm25Empty := New([]string{}, "en")
+	bm25Empty := New([]string{})
 	if bm25Empty.avgDocLength != 0 {
 		t.Errorf("Expected avgDocLength 0 for empty collection, got %f", bm25Empty.avgDocLength)
 	}
@@ -177,7 +171,7 @@ func TestEdgeCases(t *testing.T) {
 	}
 
 	// Test case 2: Collection with only empty documents
-	bm25EmptyDocs := New([]string{"", ""}, "en")
+	bm25EmptyDocs := New([]string{"", ""})
 	if bm25EmptyDocs.avgDocLength != 0 {
 		t.Errorf("Expected avgDocLength 0 for empty documents, got %f", bm25EmptyDocs.avgDocLength)
 	}
@@ -186,7 +180,7 @@ func TestEdgeCases(t *testing.T) {
 	}
 
 	// Test case 3: Query with no valid terms
-	b := New([]string{"The quick fox"}, "en")
+	b := New([]string{"The quick fox"})
 	results = b.Search(".,!?", 1)
 	if len(results) != 0 {
 		t.Errorf("Expected 0 results for query with no valid terms, got %d", len(results))

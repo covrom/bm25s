@@ -29,7 +29,6 @@ type BM25S struct {
 	docTermFreqs  []map[string]int      // TF for each document
 	docLengths    []int                 // Document lengths (in terms)
 	totalTerms    int                   // Total number of terms across the collection
-	language      string                // Stemming language ("ru"/"en")
 	autok1        bool
 	autob         bool
 	useIWF        bool // Use Inverse Word Frequency instead of IDF
@@ -69,14 +68,13 @@ func WithTokenizer(f func(string) []string) Option {
 }
 
 // New creates and initializes a new BM25S instance
-func New(docs []string, language string, opts ...Option) *BM25S {
+func New(docs []string, opts ...Option) *BM25S {
 	b := &BM25S{
 		docs:          docs,
 		k1:            ShortK1,
 		b:             ShortB,
 		autok1:        true,
 		autob:         true,
-		language:      strings.ToLower(language),
 		termDocFreq:   make(map[string]int),
 		termTotalFreq: make(map[string]int),
 	}
@@ -105,7 +103,7 @@ func New(docs []string, language string, opts ...Option) *BM25S {
 // tokenizeAndStem performs tokenization and stemming of the text
 func (b *BM25S) tokenizeAndStem(text string) []string {
 	words := strings.Fields(strings.ToLower(text))
-	var terms []string
+	terms := make([]string, 0, len(words))
 
 	for _, word := range words {
 		word = strings.TrimFunc(word, func(r rune) bool {
@@ -116,20 +114,46 @@ func (b *BM25S) tokenizeAndStem(text string) []string {
 			continue
 		}
 
-		var stemmed string
-		switch b.language {
-		case "ru", "russian":
-			stemmed = russian.Stem(word, false)
-		case "en", "english":
-			stemmed = english.Stem(word, false)
-		default:
-			stemmed = word
-		}
-
-		terms = append(terms, stemmed)
+		terms = append(terms, b.stemWord(word))
 	}
 
 	return terms
+}
+
+// stemWord applies language-specific stemming
+func (b *BM25S) stemWord(word string) string {
+	// Count Cyrillic and Latin characters
+	var cyrCount, latCount, digitCount int
+	for _, r := range word {
+		switch {
+		case r >= 'а' && r <= 'я' || r >= 'А' && r <= 'Я':
+			cyrCount++
+		case r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z':
+			latCount++
+		case r >= '0' && r <= '9':
+			digitCount++
+		}
+	}
+
+	// Apply stemming based on dominant script
+	switch {
+	case digitCount > 0:
+		return word
+	case cyrCount > latCount:
+		return russian.Stem(word, false)
+	case latCount > cyrCount:
+		return english.Stem(word, false)
+	}
+
+	// Equal number of both scripts or undetermined - try both
+	if stemmed := russian.Stem(word, false); stemmed != "" && stemmed != word {
+		return stemmed
+	}
+	if stemmed := english.Stem(word, false); stemmed != "" && stemmed != word {
+		return stemmed
+	}
+
+	return word
 }
 
 // buildIndex constructs the index for the document collection
