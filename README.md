@@ -18,7 +18,7 @@ BM25S is a Go implementation of a modified BM25 algorithm specifically optimized
 ## Installation
 
 ```bash
-go get github.com/yourusername/bm25s
+go get github.com/covrom/bm25s
 ```
 
 ## Usage
@@ -30,7 +30,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/yourusername/bm25s"
+	"github.com/covrom/bm25s"
 )
 
 func main() {
